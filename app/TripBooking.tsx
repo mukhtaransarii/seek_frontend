@@ -1,5 +1,5 @@
 import CustomHeader from '../components/CustomHeader';
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,11 +13,12 @@ import {
   Platform,
   Keyboard,
   Dimensions,
+  BackHandler
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 import * as Location from "expo-location";
 import polyline from "@mapbox/polyline";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -43,20 +44,43 @@ export default function TripBooking() {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   
-  // NEW STATES
+  // Trip related states
   const [tripFare, setTripFare] = useState(0);
   const [eta, setEta] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [myAssets, setMyAssets] = useState("");
-  const [workLocation, setWorkLocation] = useState("current"); // "current" or "different"
+  const [workLocation, setWorkLocation] = useState("current");
   const [differentLocationAddress, setDifferentLocationAddress] = useState("");
   const [showLocationInput, setShowLocationInput] = useState(false);
   
-  // NEW STATES FOR LOCATION SELECTION
+  // Location selection states
   const [selectedWorkLocation, setSelectedWorkLocation] = useState(null);
   const [isSelectingOnMap, setIsSelectingOnMap] = useState(false);
   const [tempMapLocation, setTempMapLocation] = useState(null);
 
+  // Map options states
+  const [mapType, setMapType] = useState('standard');
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [showMapOptions, setShowMapOptions] = useState(false);
+  const [userLocationEnabled, setUserLocationEnabled] = useState(true);
+  
+  // Correct BackHandler implementation
+  useFocusEffect(
+    React.useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          // Prevent going back - return true blocks the back button
+          return true;
+        }
+      );
+  
+      return () => {
+        subscription.remove(); // Correct cleanup method
+      };
+    }, [])
+  );
+  
   // Calculate trip fare
   const calculateTripFare = (distanceKm, skills, assets) => {
     const baseFare = 50;
@@ -89,10 +113,8 @@ export default function TripBooking() {
   // Handle skill selection
   const handleSkillPress = (skill) => {
     if (selectedSkillsArr.includes(skill)) {
-      // Remove skill if already selected
       setSelectedSkillsArr(selectedSkillsArr.filter(s => s !== skill));
     } else {
-      // Add skill with confirmation
       Alert.alert(
         "Add Skill to Work",
         `Do you want to add "${skill}" to your selected work?`,
@@ -110,10 +132,8 @@ export default function TripBooking() {
   // Handle asset selection
   const handleAssetPress = (asset) => {
     if (selectedAssetsArr.includes(asset)) {
-      // Remove asset if already selected
       setSelectedAssetsArr(selectedAssetsArr.filter(a => a !== asset));
     } else {
-      // Add asset with confirmation
       Alert.alert(
         "Add Asset to Work",
         `Do you want to add "${asset}" to your selected work?`,
@@ -133,13 +153,11 @@ export default function TripBooking() {
     setWorkLocation(locationType);
     if (locationType === "different") {
       setShowLocationInput(true);
-      // Auto-open map selection when choosing different location
       handleMapLocationSelect();
     } else {
       setShowLocationInput(false);
       setDifferentLocationAddress("");
       setSelectedWorkLocation(null);
-      // Reset to current location
       updateRoute(location, parsedAlly);
     }
   };
@@ -147,7 +165,7 @@ export default function TripBooking() {
   // Handle map location selection
   const handleMapLocationSelect = () => {
     setIsSelectingOnMap(true);
-    setIsCollapsed(true); // Collapse bottom box to focus on map
+    setIsCollapsed(true);
   };
 
   // Confirm map location selection
@@ -162,9 +180,8 @@ export default function TripBooking() {
       setSelectedWorkLocation(selectedLocation);
       setDifferentLocationAddress("Selected location on map");
       setIsSelectingOnMap(false);
-      setIsCollapsed(false); // Expand bottom box again
+      setIsCollapsed(false);
       
-      // Update route with selected location
       updateRoute(selectedLocation, parsedAlly);
     }
   };
@@ -173,9 +190,8 @@ export default function TripBooking() {
   const cancelMapLocation = () => {
     setIsSelectingOnMap(false);
     setTempMapLocation(null);
-    setIsCollapsed(false); // Expand bottom box again
+    setIsCollapsed(false);
     
-    // If canceling from different location selection, revert to current location
     if (workLocation === "different" && !selectedWorkLocation) {
       setWorkLocation("current");
       setShowLocationInput(false);
@@ -200,7 +216,6 @@ export default function TripBooking() {
         const distanceKm = (route.distance / 1000).toFixed(2);
         setDistance(distanceKm);
         
-        // Calculate fare and ETA
         const calculatedFare = calculateTripFare(distanceKm, selectedSkillsArr, selectedAssetsArr);
         const calculatedETA = calculateETA(distanceKm);
         setTripFare(calculatedFare);
@@ -208,6 +223,77 @@ export default function TripBooking() {
       }
     } catch (err) {
       console.error("Error updating route:", err);
+    }
+  };
+
+  // Map Options Functions
+  const toggleMapOptions = () => {
+    setShowMapOptions(!showMapOptions);
+  };
+
+  const changeMapType = (type) => {
+    setMapType(type);
+    setShowMapOptions(false);
+  };
+
+  const toggleTraffic = () => {
+    setShowTraffic(!showTraffic);
+  };
+
+  const toggleUserLocation = () => {
+    setUserLocationEnabled(!userLocationEnabled);
+  };
+
+  const focusOnUserLocation = async () => {
+    try {
+      const loc = await Location.getCurrentPositionAsync({});
+      setLocation(loc.coords);
+      setShowMapOptions(false);
+    } catch (err) {
+      console.error("Error getting current location:", err);
+      Alert.alert("Location Error", "Unable to get current location");
+    }
+  };
+
+  const focusOnAllyLocation = () => {
+    setShowMapOptions(false);
+  };
+
+  const closeMapOptions = () => {
+    setShowMapOptions(false);
+  };
+
+  // Handle map press
+  const handleMapPress = (e) => {
+    if (isSelectingOnMap) {
+      setTempMapLocation(e.nativeEvent.coordinate);
+    } else if (!isCollapsed && !isSelectingOnMap) {
+      setIsCollapsed(true);
+    }
+  };
+
+  const getRegion = () => {
+    if (isSelectingOnMap && tempMapLocation) {
+      return {
+        latitude: tempMapLocation.latitude,
+        longitude: tempMapLocation.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+    } else if (selectedWorkLocation && workLocation === "different") {
+      return {
+        latitude: selectedWorkLocation.latitude,
+        longitude: selectedWorkLocation.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+    } else {
+      return {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
     }
   };
 
@@ -229,7 +315,6 @@ export default function TripBooking() {
         setLocation(loc.coords);
         setSelectedWorkLocation(loc.coords);
 
-        // Use OSRM (no API key needed)
         updateRoute(loc.coords, parsedAlly);
       } catch (err) {
         console.error(err);
@@ -282,13 +367,6 @@ export default function TripBooking() {
       setIsCollapsed(!isCollapsed);
     }
   };
-  
-  // Handle map press to collapse bottom box
-  const handleMapPress = () => {
-    if (!isCollapsed && !isSelectingOnMap) {
-      setIsCollapsed(true);
-    }
-  };
 
   const handleOtpInputFocus = () => {
     setIsCollapsed(false);
@@ -316,133 +394,56 @@ export default function TripBooking() {
       </View>
     );
   }
-
+  
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-white"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {/* Main Map */}
       <MapView
         provider={PROVIDER_DEFAULT}
         style={{ flex: 1 }}
-        region={
-          isSelectingOnMap && tempMapLocation
-            ? {
-                latitude: tempMapLocation.latitude,
-                longitude: tempMapLocation.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }
-            : selectedWorkLocation && workLocation === "different"
-            ? {
-                latitude: selectedWorkLocation.latitude,
-                longitude: selectedWorkLocation.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }
-            : {
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }
-        }
-        onPress={(e) => {
-          if (isSelectingOnMap) {
-            setTempMapLocation(e.nativeEvent.coordinate);
-          } else {
-            handleMapPress();
-          }
-        }}
+        mapType={mapType}
+        showsTraffic={showTraffic}
+        showsUserLocation={userLocationEnabled}
+        region={getRegion()}
+        onPress={handleMapPress}
       >
-        {/* User marker */}
-        <Marker 
-          coordinate={
-            workLocation === "different" && selectedWorkLocation
-              ? selectedWorkLocation
-              : location
-          }
-        >
-          <View style={{
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-            borderWidth: 3,
-            borderColor: 'white',
-            backgroundColor: 'white',
-            overflow: 'hidden',
-            justifyContent: 'center',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: 2,
-            },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}>
-            <Image
-              source={{ uri: "https://randomuser.me/api/portraits/men/1.jpg" }}
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 22.5,
-              }}
-              resizeMode="cover"
-            />
-          </View>
-        </Marker>
+        {/* User marker - Only show if user location is disabled */}
+        {userLocationEnabled && (
+          <Marker 
+            coordinate={
+              workLocation === "different" && selectedWorkLocation
+                ? selectedWorkLocation
+                : location
+            }
+          >
+            <View className="w-12 h-12 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden justify-center items-center">
+              <Image
+                source={{ uri: "https://randomuser.me/api/portraits/men/1.jpg" }}
+                className="w-full h-full rounded-full"
+                resizeMode="cover"
+              />
+            </View>
+          </Marker>
+        )}
 
         {/* Temporary map selection marker */}
         {isSelectingOnMap && tempMapLocation && (
           <Marker coordinate={tempMapLocation}>
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: '#007AFF',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
+            <View className="w-10 h-10 rounded-full bg-blue-500 justify-center items-center">
               <Ionicons name="location" size={20} color="white" />
             </View>
           </Marker>
         )}
 
         {/* Ally marker */}
-        <Marker
-          coordinate={{
-            latitude: parsedAlly.latitude,
-            longitude: parsedAlly.longitude,
-          }}
-        >
-          <View style={{
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-            borderWidth: 3,
-            borderColor: 'white',
-            backgroundColor: 'white',
-            overflow: 'hidden',
-            justifyContent: 'center',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: 2,
-            },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}>
+        <Marker coordinate={parsedAlly}>
+          <View className="w-12 h-12 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden justify-center items-center">
             <Image
               source={{ uri: parsedAlly.image }}
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 22.5,
-              }}
+              className="w-full h-full rounded-full"
               resizeMode="cover"
             />
           </View>
@@ -453,6 +454,86 @@ export default function TripBooking() {
           <Polyline coordinates={routeCoords} strokeColor="#007AFF" strokeWidth={4} />
         )}
       </MapView>
+
+      {/* Google Maps Style Vertical Controls - Top Right */}
+      {!isSelectingOnMap && (
+        <View className="absolute top-16 right-4">
+          {/* Map Type Toggle Button */}
+          <TouchableOpacity
+            onPress={toggleMapOptions}
+            className="bg-white w-12 h-12 rounded-full justify-center items-center shadow-lg border border-gray-200 mb-2"
+          >
+            <Ionicons name="layers-outline" size={24} color="#374151" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Map Options Modal */}
+      {showMapOptions && !isSelectingOnMap && (
+        <View className="absolute top-32 right-4 bg-white rounded-3xl p-5 shadow-2xl border border-gray-200 w-56">
+          <Text className="text-lg font-bold text-gray-800 mb-4 text-center">Map Options</Text>
+          
+          {/* Map Type Options */}
+          <Text className="text-sm font-semibold text-gray-600 mb-3">Map Type</Text>
+          <View className="flex-row justify-between mb-4">
+            <TouchableOpacity 
+              onPress={() => changeMapType('standard')}
+              className={`flex-1 mx-1 px-[2px] py-2 rounded-xl ${mapType === 'standard' ? 'bg-blue-500' : 'bg-blue-50 border border-blue-200'}`}
+            >
+              <Text className={`text-center text-xs font-semibold ${mapType === 'standard' ? 'text-white' : 'text-blue-700'}`}>Standard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => changeMapType('satellite')}
+              className={`flex-1 mx-1 px-[2px] py-2 rounded-xl ${mapType === 'satellite' ? 'bg-green-500' : 'bg-green-50 border border-green-200'}`}
+            >
+              <Text className={`text-center text-xs font-semibold ${mapType === 'satellite' ? 'text-white' : 'text-green-700'}`}>Satellite</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => changeMapType('hybrid')}
+              className={`flex-1 mx-1 px-[2px] py-2 rounded-xl ${mapType === 'hybrid' ? 'bg-purple-500' : 'bg-purple-50 border border-purple-200'}`}
+            >
+              <Text className={`text-center text-xs font-semibold ${mapType === 'hybrid' ? 'text-white' : 'text-purple-700'}`}>Hybrid</Text>
+            </TouchableOpacity>
+          </View>
+      
+          {/* Toggle Options */}
+          <View className="">
+            <TouchableOpacity 
+              onPress={toggleTraffic}
+              className="mb-4 flex-row items-center py-2 px-4 bg-blue-50 rounded-xl border border-blue-100"
+            >
+              <Ionicons 
+                name={showTraffic ? "car" : "car-outline"} 
+                size={20} 
+                color={showTraffic ? "#10b981" : "#3b82f6"} 
+              />
+              <Text className="ml-3 text-sm font-semibold text-blue-700 flex-1">Show Traffic</Text>
+              <View className={`w-4 h-4 rounded-full border-2 ${showTraffic ? 'bg-green-500 border-green-500' : 'bg-white border-blue-300'}`} />
+            </TouchableOpacity>
+      
+            <TouchableOpacity 
+              onPress={toggleUserLocation}
+              className="flex-row items-center py-2 px-4 bg-indigo-50 rounded-xl border border-indigo-100"
+            >
+              <Ionicons 
+                name={userLocationEnabled ? "location" : "location-outline"} 
+                size={20} 
+                color={userLocationEnabled ? "#3b82f6" : "#6366f1"} 
+              />
+              <Text className="ml-3 text-sm font-semibold text-indigo-700 flex-1">My Location</Text>
+              <View className={`w-4 h-4 rounded-full border-2 ${userLocationEnabled ? 'bg-blue-500 border-blue-500' : 'bg-white border-indigo-300'}`} />
+            </TouchableOpacity>
+          </View>
+      
+          {/* Close Button */}
+          <TouchableOpacity 
+            onPress={closeMapOptions}
+            className="mt-4 bg-gray-100 py-3 rounded-xl border border-gray-300"
+          >
+            <Text className="text-gray-600 text-center text-sm font-semibold">Close Options</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Map Selection Overlay */}
       {isSelectingOnMap && (
@@ -509,27 +590,25 @@ export default function TripBooking() {
 
               {isCollapsed ? (
                 // Collapsed View
-                <View className="flex-row items-center"
-                 onPress={() => setIsCollapsed(true)}
-                >
-                    <Image
-                      source={{ uri: parsedAlly.image }}
-                      className="w-14 h-14 rounded-full mr-4"
-                    />
-                    <View className="flex-1">
-                      <Text className="text-lg font-semibold">{parsedAlly.name}</Text>
-                      <Text className="text-gray-500">
-                        {distance ? `${distance} km away` : "Calculating..."}
-                      </Text>
-                    </View>
-                    {/* Ally Rating */}
-                    <View className="flex-row items-center bg-amber-50 px-2 py-1 rounded-full">
-                      <Ionicons name="star" size={14} color="#f59e0b" />
-                      <Text className="ml-1 text-amber-700 font-semibold text-sm">
-                        {parsedAlly.rating || "4.5"}
-                      </Text>
-                    </View>
+                <View className="flex-row items-center">
+                  <Image
+                    source={{ uri: parsedAlly.image }}
+                    className="w-14 h-14 rounded-full mr-4"
+                  />
+                  <View className="flex-1">
+                    <Text className="text-lg font-semibold">{parsedAlly.name}</Text>
+                    <Text className="text-gray-500">
+                      {distance ? `${distance} km away` : "Calculating..."}
+                    </Text>
                   </View>
+                  {/* Ally Rating */}
+                  <View className="flex-row items-center bg-amber-50 px-2 py-1 rounded-full">
+                    <Ionicons name="star" size={14} color="#f59e0b" />
+                    <Text className="ml-1 text-amber-700 font-semibold text-sm">
+                      {parsedAlly.rating || "4.5"}
+                    </Text>
+                  </View>
+                </View>
               ) : (
                 // Expanded View
                 <>
@@ -554,9 +633,9 @@ export default function TripBooking() {
                     </View>
                   </View>
 
-                  {/* Skills & Assets - Clean & Beautiful Design */}
+                  {/* Skills & Assets */}
                   <View className="mt-4">
-                    {/* Selected Work - Show this first since it's most important */}
+                    {/* Selected Work */}
                     {(selectedSkillsArr.length > 0 || selectedAssetsArr.length > 0) && (
                       <View className="mb-4 bg-green-50 rounded-2xl p-3 border border-green-100">
                         <View className="flex-row items-center mb-2">
@@ -573,7 +652,7 @@ export default function TripBooking() {
                       </View>
                     )}
 
-                    {/* Ally Skills - Now with click functionality */}
+                    {/* Ally Skills */}
                     <View className="mb-3">
                       <View className="flex-row items-center mb-2">
                         <Ionicons name="build" size={16} color="#6366f1" />
@@ -607,7 +686,7 @@ export default function TripBooking() {
                       </ScrollView>
                     </View>
 
-                    {/* Ally Assets - Now with click functionality */}
+                    {/* Ally Assets */}
                     <View className="mb-3">
                       <View className="flex-row items-center mb-2">
                         <Ionicons name="briefcase" size={16} color="#8b5cf6" />

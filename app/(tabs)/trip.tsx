@@ -37,7 +37,7 @@ export default function TripPage() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <CustomHeader title="Trip Booking" onBack={() => navigation.goBack()} onMenu={() => console.log("menu")}/> 
+      <CustomHeader title="Trip Booking"/> 
 
       <ScrollView
         className="flex-1 px-5"
