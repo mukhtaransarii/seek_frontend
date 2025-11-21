@@ -20,6 +20,9 @@ export default function TabsLayout() {
           fontSize: 12,
           marginBottom: 5,
         },
+        tabBarSafeAreaInsets: {
+          bottom: 0,
+        },
       }}
     >
       {/* 🏠 Home Tab */}
