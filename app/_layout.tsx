@@ -4,17 +4,17 @@ import "../global.css";
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-white">
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            headerTransparent: true,    // ✅ Makes header background clear
-            headerTitle: "",            // Optional: remove title text
-            headerShadowVisible: false, // Optional: remove bottom shadow/border
-          }}
-        />
-      </SafeAreaView>
-    </SafeAreaProvider>
+      <SafeAreaProvider>
+        <SafeAreaView className="flex-1 bg-white">
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              headerTransparent: true,
+              headerTitle: "",
+              headerShadowVisible: false,
+            }}
+          />
+        </SafeAreaView>
+      </SafeAreaProvider>
   );
 }

@@ -1,17 +1,18 @@
-import CustomHeader from '../../components/CustomHeader';
+// import CustomHeader from '../../components/CustomHeader';
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-const workTypes = [
+const services = [
   {
     id: 1,
     name: "BookRide",
     displayName: "Book Ride",
     icon: "car-outline",
     description: "Transportation services",
-    color: "blue"
+    color: "blue",
+    screen: '/worktypes/BookRide/BookRideMain' 
   },
   {
     id: 2,
@@ -19,7 +20,8 @@ const workTypes = [
     displayName: "Send Parcel",
     icon: "cube-outline",
     description: "Package delivery services",
-    color: "green"
+    color: "green",
+    screen: '/worktypes/SendParcel/SendParcelMain'
   },
   {
     id: 3,
@@ -27,7 +29,9 @@ const workTypes = [
     displayName: "Home Services", 
     icon: "home-outline",
     description: "Cleaning, repairs & maintenance",
-    color: "purple"
+    color: "purple",
+    screen: '/worktypes/HomeService/HomeServiceMain' 
+    
   },
   {
     id: 4,
@@ -35,21 +39,20 @@ const workTypes = [
     displayName: "Event Help",
     icon: "people-outline",
     description: "Event setup and staffing",
-    color: "orange"
+    color: "orange",
+    screen: '/worktypes/EventHelper/EventHelperMain' 
   }
 ];
 
-export default function TripSelection() {
+export default function Trip() {
   const router = useRouter();
 
-  const handleWorkTypeSelect = (workType) => {
-    // Direct redirect to service page
-    router.push(`/workpages/${workType.name}`);
+  const handleWorkTypeSelect = (services) => {
+    router.push(`${services.screen}`);
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <CustomHeader title="Select Service" />
+    <View className="flex-1 bg-white">
       
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 20 }}>
         {/* Header */}
@@ -66,12 +69,12 @@ export default function TripSelection() {
         </View>
 
         {/* Work Type Grid */}
-        <View className="flex-row flex-wrap justify-between gap-4">
-          {workTypes.map((workType) => (
+        <View className="flex flex-row flex-wrap justify-between">
+          {services.map((services) => (
             <WorkTypeCard 
-              key={workType.id}
-              workType={workType}
-              onPress={() => handleWorkTypeSelect(workType)}
+              key={services.id}
+              services={services}
+              onPress={() => handleWorkTypeSelect(services)}
             />
           ))}
         </View>
@@ -81,7 +84,7 @@ export default function TripSelection() {
 }
 
 // Work Type Card Component
-const WorkTypeCard = ({ workType, onPress }) => {
+const WorkTypeCard = ({ services, onPress }) => {
   const colorMap = {
     blue: "bg-blue-50 border-blue-200",
     green: "bg-green-50 border-green-200", 
@@ -99,17 +102,17 @@ const WorkTypeCard = ({ workType, onPress }) => {
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`w-[48%] p-6 rounded-2xl border-2 ${colorMap[workType.color]} mb-4`}
+      className={`w-[47%] p-6 rounded-2xl border-2 ${colorMap[services.color]} mb-4`}
     >
       <View className="items-center">
         <View className={`p-3 rounded-xl mb-3 bg-white`}>
-          <Ionicons name={workType.icon} size={24} color={iconColorMap[workType.color]} />
+          <Ionicons name={services.icon} size={24} color={iconColorMap[services.color]} />
         </View>
         <Text className="text-lg font-bold text-gray-900 text-center mb-1">
-          {workType.displayName}
+          {services.displayName}
         </Text>
         <Text className="text-gray-500 text-sm text-center">
-          {workType.description}
+          {services.description}
         </Text>
       </View>
     </TouchableOpacity>

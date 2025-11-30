@@ -42,7 +42,7 @@
         }
       ],
       "expo-maps",
-      "expo-dev-client"
+      "expo-dev-client",
     ],
     "experiments": {
       "typedRoutes": true,
@@ -50,3 +50,4 @@
     }
   }
 }
+

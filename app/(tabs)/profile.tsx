@@ -1,12 +1,9 @@
 import { View, Text } from "react-native";
-import CustomHeader from '../../components/CustomHeader';
 
-export default function profile() {
+export default function Profile() {
   return (
-    <View className="bg-white">
-      {/* Header */}
-      <CustomHeader title="My Profile"/>
-      
+    <View className="flex-1 items-center justify-center bg-white">
+      <Text className="text-xl font-bold text-blue-500">🏠 Home Screen</Text>
     </View>
   );
 }
