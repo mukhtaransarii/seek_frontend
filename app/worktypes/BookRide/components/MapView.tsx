@@ -128,7 +128,7 @@ export default function MapViewComponents() {
         <Polyline
           coordinates={routeCoords}
           strokeWidth={4}
-          strokeColor="#3b82f6"
+          strokeColor="#151515"
         />
       )}
     </MapView>

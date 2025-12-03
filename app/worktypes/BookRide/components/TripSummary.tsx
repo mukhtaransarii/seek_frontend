@@ -136,7 +136,7 @@ export default function TripSummary() {
                 </View>
                 <Text className="text-xs font-semibold text-gray-800">{vehicle.name}</Text>
                 <Text className="text-xs text-gray-600">{vehicle.seats}</Text>
-                <Text className="text-sm font-bold text-gray-900 mt-1">{vehicle.price}</Text>
+                <Text className="text-sm font-bold text-gray-900 mt-1">₹{vehicle.price}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -156,7 +156,7 @@ export default function TripSummary() {
             onPress={handleConfirm}
           >
             <Text className="text-white text-center font-semibold">
-              Confirm • {vehicles.find(v => v.id === selectedVehicle)?.price}
+              Confirm • ₹{vehicles.find(v => v.id === selectedVehicle)?.price}
             </Text>
           </TouchableOpacity>
         </View>

@@ -83,29 +83,41 @@ export default function LocationPicker() {
 
   // GETTING REAL FARE from backend
   const BASE_URL = "http://localhost:5000/api/fare";
+  const DEMO_FARE = {
+    bike: 45,
+    auto: 60,
+    sedan: 120,
+    suv: 180,
+  };
+  
   const handleContinue = async () => {
-    if (pickup && drop) {
-      try {
-        const response = await axios.post(`${BASE_URL}/calc`, {
-          distance,
-          eta,
-        });
+    if (!pickup || !drop) {
+      return Alert.alert("Enter both pickup and drop locations");
+    }
   
-        // Save fare response in state
-        setFare(response.data.fare); // only fare
-        console.log("response.data",response.date) // this has distance, eta and fare
-        
-        // Move to next step
-        setStep(2);
+    try {
+      // Try connecting to backend
+      const { data } = await axios.post(`${BASE_URL}/calc`, { distance, eta, });
   
-      } catch (error) {
-        console.error("Error calculating fare:", error.response?.data || error.message);
-        Alert.alert("Error", "Failed to calculate fare");
-      }
-    } else {
-      Alert.alert("Enter both pickup and drop locations");
+      // Save real fares
+      setFare(data.fare);
+      setStep(2);
+  
+    } catch (error) {
+      console.warn("Backend offline, using demo fare");
+  
+      // Only show this when server is down
+      Alert.alert(
+        "Demo Mode",
+        "Backend server is offline. Showing demo prices."
+      );
+      // Use demo fallback
+      setFare(DEMO_FARE);
+      // Still move to step 2
+      setStep(2);
     }
   };
+
 
   return (
     <View className="absolute w-full px-4 mt-3 top-10 z-10">
